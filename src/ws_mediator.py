@@ -5,7 +5,7 @@ Usage:
   python3 src/ws_mediator.py
 
 Protocol (over WS):
-  - On connect, clients SHOULD send a registration message:
+  - On connect, clients should send a registration message:
       {"type": "register", "role": "device"}
       or
       {"type": "register", "role": "ui", "name": "frontend"}
@@ -19,9 +19,6 @@ Protocol (over WS):
 HTTP endpoints:
   - POST /api/status  -> accepts JSON and broadcasts to UIs (fallback from device)
   - GET  /api/clients -> returns connected clients (device + ui count)
-
-This mediator is intentionally small and trusting. For production add auth,
-rate limits, and message validation.
 """
 import asyncio
 import json
