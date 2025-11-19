@@ -4,21 +4,8 @@ import config
 from flask import Flask, request, jsonify
 import json
 import asyncio
-
-try:
-    import requests
-    _HAS_REQUESTS = True
-except Exception:
-    import urllib.request as _urllib_request
-    import urllib.error as _urllib_error
-    _HAS_REQUESTS = False
-
-try:
-    import websockets
-    _HAS_WS = True
-except Exception:
-    websockets = None
-    _HAS_WS = False
+import requests
+import websockets
 
 # WebSocket server state
 _ws_server_loop = None
@@ -73,20 +60,9 @@ def send_status(data):
     # If a host URL is configured, attempt to POST the JSON status there.
     host_url = getattr(config, "HOST_URL", None)
     if host_url:
-        try:
-            if _HAS_REQUESTS:
-                resp = requests.post(host_url, json=data, timeout=2)
-                resp.raise_for_status()
-            else:
-                req = _urllib_request.Request(
-                    host_url,
-                    data=json.dumps(data).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with _urllib_request.urlopen(req, timeout=2) as r:
-                    # consume response (no-op)
-                    r.read()
+        try:    
+            resp = requests.post(host_url, json=data, timeout=2)
+            resp.raise_for_status()   
 
             print(f"[HOST] Status sent to host: {host_url}")
         except Exception as e:
@@ -141,19 +117,8 @@ def send_event(event_type: str, payload: dict):
     host_url = getattr(config, "HOST_URL", None)
     if host_url:
         try:
-            if _HAS_REQUESTS:
-                resp = requests.post(host_url, json=msg, timeout=2)
-                resp.raise_for_status()
-            else:
-                req = _urllib_request.Request(
-                    host_url,
-                    data=json.dumps(msg).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with _urllib_request.urlopen(req, timeout=2) as r:
-                    r.read()
-            print(f"[HOST] Event posted to {host_url}: {event_type}")
+            resp = requests.post(host_url, json=msg, timeout=2)
+            resp.raise_for_status()
         except Exception as e:
             print(f"[HOST] Failed to POST event to {host_url}:", e)
     else:
