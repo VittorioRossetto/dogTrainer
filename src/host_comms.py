@@ -109,7 +109,7 @@ def send_event(event_type: str, payload: dict):
     }
 
     # Try websocket first (broadcast to connected UIs)
-    if _HAS_WS and _send_via_ws(msg):
+    if _send_via_ws(msg):
         print(f"[HOST][WS] Event broadcast: {event_type}")
         return
 
@@ -137,28 +137,40 @@ def start_ws_server():
     are dispatched to the registered command handler. Messages from the device
     (sent via `send_event`) are broadcast to UIs.
     """
-    global _HAS_WS, _ws_server_loop, _ws_server_thread
-
-    if not _HAS_WS:
-        print("[HOST][WS] websockets package not available; WS server disabled")
-        return
+    global _ws_server_loop, _ws_server_thread
 
     port = getattr(config, "WS_SERVER_PORT", 8765)
     path = getattr(config, "WS_SERVER_PATH", "/ws")
 
-    async def _handler(ws, path_recv):
-        # Only accept connections on the configured path
-        if path_recv != path:
-            await ws.close()
+    async def _handler(ws, path_recv=None):
+        # websockets library may call the handler with either (ws, path)
+        # or with a single `connection` object. Accept either form and
+        # extract the request path if needed.
+        if path_recv is None:
+            # WebSocketServerProtocol exposes the negotiated path as `.path`
+            path_recv = getattr(ws, "path", None)
+
+        # Only reject if we can determine the path and it doesn't match.
+        # Some websockets versions call the handler with a single connection
+        # object that may not expose the path immediately; in that case
+        # allow the connection to proceed to avoid an immediate close.
+        if path_recv is not None and path_recv != path:
+            try:
+                await ws.close()
+            except Exception:
+                pass
             return
 
         with _ws_clients_lock:
             _ws_clients.add(ws)
-        print("[HOST][WS] UI connected")
+        # Debug: report connection details
+        peer = getattr(ws, "remote_address", None)
+        print(f"[HOST][WS] UI connected path={path_recv} peer={peer}")
 
         try:
             async for message in ws:
                 # Expect text messages
+                print(f"[HOST][WS] Message from {peer}: {message}")
                 try:
                     data = json.loads(message)
                 except Exception:
@@ -186,14 +198,20 @@ def start_ws_server():
         loop = asyncio.new_event_loop()
         _ws_server_loop = loop
         asyncio.set_event_loop(loop)
-        start_server = websockets.serve(_handler, '0.0.0.0', port)
-        server = loop.run_until_complete(start_server)
-        print(f"[HOST][WS] Server listening on 0.0.0.0:{port}{path}")
+        # Create the server from within the event loop to avoid
+        # `asyncio.get_running_loop()` errors in newer websockets versions.
+        async def _create_server():
+            return await websockets.serve(_handler, '0.0.0.0', port)
+
+        server = None
         try:
+            server = loop.run_until_complete(_create_server())
+            print(f"[HOST][WS] Server listening on 0.0.0.0:{port}{path}")
             loop.run_forever()
         finally:
-            server.close()
-            loop.run_until_complete(server.wait_closed())
+            if server is not None:
+                server.close()
+                loop.run_until_complete(server.wait_closed())
             loop.close()
 
     _ws_server_thread = threading.Thread(target=_run_loop, daemon=True)

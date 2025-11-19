@@ -5,7 +5,12 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function ManualTrainerApp() {
   const [logs, setLogs] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
-  const [wsUrl, setWsUrl] = useState<string>(`ws://${window.location.hostname}:8765/ws`);
+  // Choose `ws` or `wss` automatically depending on page protocol to
+  // avoid mixed-content blocks when the frontend is served over HTTPS.
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  const defaultHost = window.location.hostname || "localhost";
+  const defaultWsUrl = `${proto}://${defaultHost}:8765/ws`;
+  const [wsUrl, setWsUrl] = useState<string>(defaultWsUrl);
   const [mode, setMode] = useState<"auto" | "manual">("manual");
   const [audioText, setAudioText] = useState<string>("");
   const wsRef = useRef<WebSocket | null>(null);
@@ -15,12 +20,17 @@ export default function ManualTrainerApp() {
   const handleConnect = () => {
     if (wsRef.current) return;
     try {
-      const ws = new WebSocket(wsUrl);
+      // Recompute proto/host at connect time in case the page context changed.
+      const connectProto = window.location.protocol === "https:" ? "wss" : "ws";
+      const connectHost = window.location.hostname || defaultHost;
+      const connectUrl = wsUrl || `${connectProto}://${connectHost}:8765/ws`;
+      addLog(`Connecting to ${connectUrl}`);
+      const ws = new WebSocket(connectUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
         setConnected(true);
-        addLog(`WS connected: ${wsUrl}`);
+        addLog(`WS connected: ${connectUrl}`);
       };
 
       ws.onmessage = (ev) => {
@@ -32,14 +42,17 @@ export default function ManualTrainerApp() {
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         wsRef.current = null;
         setConnected(false);
-        addLog("WS disconnected");
+        addLog(`WS disconnected (code=${ev.code} reason=${ev.reason})`);
       };
 
       ws.onerror = (e) => {
-        addLog(`WS error`);
+        // `onerror` provides limited info; log a helpful message and
+        // rely on onclose for the actual close code.
+        addLog(`WS error: ${String((e as any).message || e)}`);
+        console.error("WebSocket error", e);
       };
     } catch (e) {
       addLog(`Failed to connect: ${String(e)}`);
@@ -117,9 +130,18 @@ export default function ManualTrainerApp() {
 
       <Card>
         <CardContent className="p-4 space-y-2">
-          <Button onClick={handleConnect} disabled={connected}>
-            {connected ? "Connected" : "Connect"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              className="border rounded px-2 py-1 flex-1"
+              value={wsUrl}
+              onChange={(e) => setWsUrl(e.target.value)}
+              placeholder={defaultWsUrl}
+              aria-label="WebSocket URL"
+            />
+            <Button onClick={handleConnect} disabled={connected}>
+              {connected ? "Connected" : "Connect"}
+            </Button>
+          </div>
           <div className="grid grid-cols-3 gap-2 pt-2">
             <Button onClick={() => sendCommand("sit")} disabled={!connected}>Sit</Button>
             <Button onClick={() => sendCommand("stand")} disabled={!connected}>Stand</Button>
@@ -128,6 +150,21 @@ export default function ManualTrainerApp() {
           <Button onClick={dispense} variant="outline" disabled={!connected}>
             Dispense Treat
           </Button>
+
+          {/* Custom audio input */}
+          <div className="pt-2 flex gap-2">
+            <input
+              className="border rounded px-2 py-1 flex-1"
+              placeholder="Type audio text (e.g. 'Good dog!')"
+              value={audioText}
+              onChange={(e) => setAudioText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendAudio(); }}
+              aria-label="Audio text"
+            />
+            <Button onClick={sendAudio} disabled={!connected || !audioText}>
+              Send Audio
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
