@@ -208,3 +208,5 @@ __marimo__/
 
 
 model/
+
+rpiConnection_comms.sh
