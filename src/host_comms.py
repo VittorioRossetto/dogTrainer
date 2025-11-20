@@ -124,6 +124,15 @@ def send_event(event_type: str, payload: dict):
     else:
         print("[HOST] No host sink configured; event cached locally:", msg)
 
+    # Attempt to persist the event to InfluxDB (best-effort)
+    try:
+        from influx_writer import write_event
+        # write_event accepts the full envelope
+        write_event(msg)
+    except Exception as e:
+        # don't crash if Influx isn't available; just log
+        print("[HOST] Influx write skipped/error:", e)
+
 
 def start_ws_client():
     # Deprecated in server-hosting mode. kept for compatibility

@@ -29,6 +29,14 @@ WS_RECONNECT_INTERVAL = 5
 WS_SERVER_PORT = 8765
 WS_SERVER_PATH = "/ws"
 
+# InfluxDB settings: prefer InfluxDB v2 (token/org/bucket). If TOKEN is empty
+# the writer will attempt an InfluxDB v1 client using INFLUX_DB.
+INFLUX_URL = "http://localhost:8086"
+INFLUX_TOKEN = ""  # set for InfluxDB v2
+INFLUX_ORG = ""
+INFLUX_BUCKET = "dog_training"
+INFLUX_DB = "dog_training"  # for InfluxDB v1 compatibility
+
 # Servo
 SERVO_PIN = 18
 MIN_PW = 0.0010
