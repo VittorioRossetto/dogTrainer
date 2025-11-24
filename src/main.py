@@ -123,6 +123,16 @@ def main():
                     print("[HOST CMD] audio playback error:", e)
                     host_comms.send_event("audio_playback", {"method": "error", "error": str(e)})
 
+            elif cmd == "collector_broadcast":
+                # Collector can ask the device to rebroadcast an event to all
+                # connected UIs. Expected shape: {cmd:'collector_broadcast', event: '<name>', payload: {...}}
+                ev = msg.get('event')
+                payload = msg.get('payload', {}) or {}
+                if ev:
+                    host_comms.send_event(ev, payload)
+                else:
+                    print('[HOST CMD] collector_broadcast missing event field')
+
             elif cmd == "override_treat":
                 mode = msg.get("mode")
                 if mode == "disable":

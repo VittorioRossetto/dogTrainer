@@ -15,6 +15,10 @@ export default function ManualTrainerApp() {
   const [audioText, setAudioText] = useState<string>("");
   const [fileToSend, setFileToSend] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [successCount, setSuccessCount] = useState<number>(0);
+  const [treatCount, setTreatCount] = useState<number>(0);
+  const [recentSuccesses, setRecentSuccesses] = useState<Array<{ target_pose?: string; when: number; filename?: string; text?: string }>>([]);
+  const [highlightSuccess, setHighlightSuccess] = useState<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   const addLog = (msg: string) => setLogs((l) => [msg, ...l]);
@@ -39,6 +43,23 @@ export default function ManualTrainerApp() {
         try {
           const data = JSON.parse(ev.data);
           addLog(`Incoming: ${JSON.stringify(data)}`);
+
+          // Handle event envelopes from device/collector
+          if (data && data.type === 'event') {
+            const evName = data.event;
+            const payload = data.payload || {};
+            if (evName === 'command_success') {
+              // increment local counter and flash UI
+              setSuccessCount((s) => s + 1);
+              setRecentSuccesses((rs) => [{ target_pose: payload.target_pose, when: Date.now(), filename: payload.filename, text: payload.command_text }, ...rs].slice(0, 10));
+              setHighlightSuccess(true);
+              // clear highlight after 3s
+              setTimeout(() => setHighlightSuccess(false), 3000);
+            }
+            if (evName === 'treat_given') {
+              setTreatCount((t) => t + 1);
+            }
+          }
         } catch (e) {
           addLog(`Incoming: ${ev.data}`);
         }
@@ -154,6 +175,33 @@ export default function ManualTrainerApp() {
   return (
     <div className="p-4 grid gap-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold">Dog Trainer Manual Control</h1>
+
+      <div className="flex gap-4 items-center">
+        <div className={`px-3 py-1 rounded ${highlightSuccess ? 'bg-green-200 animate-pulse' : 'bg-gray-100'}`}>
+          <strong>Successes:</strong> {successCount}
+        </div>
+        <div className="px-3 py-1 rounded bg-gray-100">
+          <strong>Treats:</strong> {treatCount}
+        </div>
+        <button
+          onClick={() => {
+            // fetch latest daily_counters from influx API
+            fetch('http://127.0.0.1:4000/api/points?measurement=daily_counters&limit=1')
+              .then((r) => r.json())
+              .then((j) => {
+                const p = (j.points && j.points[0]) || null;
+                if (p) {
+                  if (p.command_success_count != null) setSuccessCount(Number(p.command_success_count));
+                  if (p.treat_count != null) setTreatCount(Number(p.treat_count));
+                }
+              })
+              .catch((e) => addLog(`Failed to fetch counters: ${String(e)}`));
+          }}
+          className="border rounded px-2 py-1 bg-white"
+        >
+          Load Counters
+        </button>
+      </div>
 
       <Card>
         <CardContent className="p-4 space-y-2">

@@ -146,13 +146,9 @@ Author
 Vittorio Rossetto
 - [Github](https://github.com/VittorioRossetto)
 - [Linkedin](https://www.linkedin.com/in/vittorio-rossetto-508086333/)
+  
 ---
 
 Contributing
 
 Contributions welcome. Open an issue or PR describing your change. Suggested next improvements:
-
----
-
-License
-  
