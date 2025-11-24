@@ -141,8 +141,11 @@ Developer notes
 
 ---
 
+Author
 
-
+Vittorio Rossetto
+- [Github](https://github.com/VittorioRossetto)
+- [Linkedin](https://www.linkedin.com/in/vittorio-rossetto-508086333/)
 ---
 
 Contributing
