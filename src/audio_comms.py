@@ -1,3 +1,38 @@
+"""
+    Text-to-speech and audio playback utilities
+
+    Both generation and playback are done through external command-line tools.
+    Generation uses `espeak` or `pico2wave` if available. Playback uses
+    `paplay`, `ffplay`, or `aplay`.
+    Functions:
+    - say(text, sink_keyword="VTIN K1", rate=140, voice=None)
+        Generate speech from `text` and play it through the Bluetooth speaker
+        whose description contains `sink_keyword`.
+    - play_recording(name_or_path, sink_keyword="VTIN K1")
+        Play a prerecorded audio file by name or path.
+    - play_bytes(data: bytes, suffix=".wav", sink_keyword="VTIN K1")
+        Play raw audio bytes by writing to a temporary file and playing it.
+    - play_base64(b64str: str, suffix=".wav", sink_keyword="VTIN K1")
+        Decode a base64-encoded audio string and play it.
+
+    Usage:
+        from audio_comms import say, play_recording, play_bytes, play_base64
+    
+        say("Hello, world!", sink_keyword="VTIN K1", rate=140)
+    
+        play_recording("welcome.wav", sink_keyword="VTIN K1")
+    
+        with open("alert.wav", "rb") as f:
+            data = f.read()
+        play_bytes(data, suffix=".wav", sink_keyword="VTIN K1")
+    
+        import base64
+        with open("notification.wav", "rb") as f:
+            b64str = base64.b64encode(f.read()).decode('utf-8')
+        play_base64(b64str, suffix=".wav", sink_keyword="VTIN K1")    
+"""
+
+# import necessary modules
 import tempfile
 import shutil
 import subprocess

@@ -6,16 +6,14 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 DETECTOR_MODEL = "../model/yolov8n.pt"
 CLASSIFIER_MODEL = "../model/best.pt"
-DET_CONF = 0.30
-POSE_CONF = 0.50
+DET_CONF = 0.50 # confidence threshold for dog detection
+POSE_CONF = 0.70 # confidence threshold for pose classification
 
 # Behavior logic timers
-TREAT_WINDOW = 5        # seconds
+TREAT_WINDOW = 10       # seconds
 TREAT_COOLDOWN = 5*60   # 5 minutes cooldown after treat
 
 # Host communication: set to the host endpoint to receive status updates from
-# this device, e.g. "http://192.168.1.10:3000/api/status". Set to `None`
-# to disable sending to a remote host.
 HOST_URL = None
 # WebSocket host URL (preferred for low-latency bidirectional comms).
 # Example: "ws://192.168.1.100:3000/ws"
@@ -23,9 +21,7 @@ HOST_WS_URL = None
 
 # WebSocket reconnect interval (seconds)
 WS_RECONNECT_INTERVAL = 5
-# If the device should host a WebSocket server for UIs to connect directly,
-# configure the port/path here. The server binds to 0.0.0.0 so the Pi is reachable
-# on the network.
+# WebSocket server settings (for incoming connections from host UIs)
 WS_SERVER_PORT = 8765
 WS_SERVER_PATH = "/ws"
 
@@ -38,8 +34,8 @@ INFLUX_BUCKET = "dog_training"
 INFLUX_DB = "dog_training"  # for InfluxDB v1 compatibility
 
 # Servo
-SERVO_PIN = 18
-MIN_PW = 0.0010
+SERVO_PIN = 18 
+MIN_PW = 0.0010  
 MAX_PW = 0.0020
-TREAT_ANGLE = 60
-REST_ANGLE = 0
+TREAT_ANGLE = 0 
+REST_ANGLE = 90

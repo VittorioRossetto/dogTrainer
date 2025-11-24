@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Collector: subscribe to device WebSocket and write events to local InfluxDB.
 
 This script runs on the machine where InfluxDB is hosted (e.g. your laptop)

@@ -1,3 +1,19 @@
+"""
+Main application logic for the Dog Trainer device.
+Handles vision processing, servo control, and host communications.
+
+Uses OpenCV for video capture and processing, a custom VisionSystem for
+dog detection and pose classification, and a ServoController for treat dispensing.
+
+The application supports two modes:
+- Automatic mode: detects dog poses and dispenses treats based on predefined logic.
+- Manual mode: responds to commands from the host UI for treat dispensing and audio playback.
+
+Usage:
+  python3 src/main.py
+"""
+
+# Import necessary modules
 import time
 import cv2
 import config
@@ -5,59 +21,65 @@ from vision import VisionSystem
 from servo_controller import ServoController
 from audio_comms import say, play_base64, play_recording
 import host_comms
+import os
+import glob
 
-
+# Automatic mode logic
 def automatic_mode_logic(mode_state, servo, label):
     now = time.time()
 
-    # STATE 1 — Dog standing → instruct to sit
+    # STATE 1 — Dog standing -> instruct to sit
     if mode_state["stage"] == "waiting_stand":
+        # Check the current pose
         if label == "stand":
-            say("Sit")
-            mode_state["last_command_time"] = now
-            mode_state["stage"] = "waiting_sit"
+            say("Sit") # Instruct the dog
+            mode_state["last_command_time"] = now # record command time
+            mode_state["stage"] = "waiting_sit" # move to next state
 
-    # STATE 2 — Dog must sit within 5 seconds
+    # STATE 2 — Dog must sit within TREAT_WINDOW (find in config.py) seconds
     elif mode_state["stage"] == "waiting_sit":
         if now - mode_state["last_command_time"] > config.TREAT_WINDOW:
-            # timeout → restart
+            # timeout -> restart
             mode_state["stage"] = "waiting_stand"
         # Check for overrides
         if mode_state.get("treat_disabled"):
             return
 
-        # Force treat if requested by host
-        if mode_state.get("force_treat"):
-            servo.sweep()
-            say("Good dog!")
-            mode_state["force_treat"] = False
-            mode_state["stage"] = "cooldown"
-            mode_state["cooldown_until"] = now + config.TREAT_COOLDOWN
-            # send treat event through host_comms
-            host_comms.send_event("treat_given", {"reason": "force_treat"})
-            host_comms.send_event("servo_action", {"action": "sweep"})
-            return
+        # # Force treat if requested by host
+        # if mode_state.get("force_treat"):
+        #     servo.sweep()
+        #     say("Good dog!") # praise the dog even though the treat was forced
+        #     mode_state["force_treat"] = False # reset flag
+        #     mode_state["stage"] = "cooldown" # move to cooldown
+        #     mode_state["cooldown_until"] = now + config.TREAT_COOLDOWN 
+        #     # send treat event through host_comms
+        #     host_comms.send_event("treat_given", {"reason": "force_treat"})
+        #     host_comms.send_event("servo_action", {"action": "sweep"})
+        #     return
 
+        # Check the current pose for sitting, give treat if so, since the dog followed command
         if label == "sit":
-            servo.sweep()
-            say("Good dog!")
-            mode_state["stage"] = "cooldown"
+            servo.sweep() # dispense treat
+            say("Good dog!") # praise the dog
+            mode_state["stage"] = "cooldown" # move to cooldown
             mode_state["cooldown_until"] = now + config.TREAT_COOLDOWN
             host_comms.send_event("treat_given", {"reason": "auto"})
             host_comms.send_event("servo_action", {"action": "sweep"})
 
     # STATE 3 — Cooldown 5 minutes
     elif mode_state["stage"] == "cooldown":
+        # Wait for cooldown period to expire
         if now > mode_state["cooldown_until"]:
-            mode_state["stage"] = "waiting_stand"
+            mode_state["stage"] = "waiting_stand" # restart cycle after cooldown
 
 
 def main():
-    host_comms.start_server()
+    host_comms.start_server() # start WebSocket server for host communications
 
-    vision = VisionSystem()
-    servo = ServoController()
+    vision = VisionSystem() # initialize vision system
+    servo = ServoController() # initialize servo controller
 
+    # Initialize mode state for automatic mode logic
     mode_state = {
         "stage": "waiting_stand",
         "last_command_time": 0,
@@ -68,33 +90,29 @@ def main():
         # Register host command handler
         def _on_host_command(msg):
             # Expected messages: {"cmd": "set_mode", ...} or {"cmd": "servo", ...}
-            cmd = msg.get("cmd")
+            cmd = msg.get("cmd") # command type
+            # Validate command
             if not cmd:
-                print("[HOST CMD] Invalid command (no 'cmd'):", msg)
+                print("[HOST CMD] Invalid command (no 'cmd'):", msg) # log error
                 return
 
+            # Handle different command types
+            # Set mode command (auto/manual)
             if cmd == "set_mode":
                 m = msg.get("mode")
                 if m in ["auto", "manual"]:
-                    config.MODE = m
+                    config.MODE = m # update mode
                     print(f"[HOST] Mode switched to: {config.MODE}")
                     host_comms.send_event("mode_changed", {"mode": config.MODE})
                 else:
-                    print("[HOST CMD] Invalid mode:", m)
+                    print("[HOST CMD] Invalid mode:", m) # log error
 
-            elif cmd == "servo":
+            elif cmd == "servo": 
                 action = msg.get("action")
-                if action == "set_angle":
-                    angle = msg.get("angle")
-                    try:
-                        servo.set_angle(int(angle))
-                        host_comms.send_event("servo_action", {"action": "set_angle", "angle": angle})
-                    except Exception as e:
-                        print("[HOST CMD] servo set_angle error:", e)
-                elif action == "sweep":
-                    servo.sweep()
-                    host_comms.send_event("servo_action", {"action": "sweep"})
-                    host_comms.send_event("treat_given", {"reason": "host_command"})
+                if action == "sweep":
+                    servo.sweep() # dispense treat
+                    host_comms.send_event("servo_action", {"action": "sweep"}) # notify host
+                    host_comms.send_event("treat_given", {"reason": "host_command"}) # notify host
                 else:
                     print("[HOST CMD] Unknown servo action:", action)
 
@@ -103,22 +121,50 @@ def main():
                 # - raw text -> TTS via say()
                 # - b64 -> base64-encoded audio data to play
                 # - filename/file -> play a prerecorded file from recordings/ or path
-                text = msg.get("text")
-                b64 = msg.get("b64")
-                filename = msg.get("filename") or msg.get("file")
+                text = msg.get("text") # raw text for TTS
+                b64 = msg.get("b64") # base64-encoded audio data
+                filename = msg.get("filename") or msg.get("file") # filename or file path
 
                 try:
                     if b64:
-                        ok = play_base64(b64)
-                        host_comms.send_event("audio_playback", {"method": "b64", "filename": filename if filename else None, "ok": bool(ok)})
+                        ok = play_base64(b64) # play base64 audio
+                        host_comms.send_event("audio_playback", {"method": "b64", "filename": filename if filename else None, "ok": bool(ok)}) # notify host
                     elif filename:
-                        ok = play_recording(filename)
-                        host_comms.send_event("audio_playback", {"method": "file", "filename": filename, "ok": bool(ok)})
+                        ok = play_recording(filename) # play prerecorded file
+                        host_comms.send_event("audio_playback", {"method": "file", "filename": filename, "ok": bool(ok)}) # notify host
                     elif text:
-                        say(text)
-                        host_comms.send_event("audio_playback", {"method": "tts", "text": text})
+                        name = text.strip()
+                        # only treat plain basenames (no path separators) as recording names
+                        if name and os.path.basename(name) == name:
+                            candidate_dirs = [
+                                os.path.join(os.getcwd(), "recordings"), # current working dir recordings/
+                                os.path.join(os.path.dirname(__file__), "recordings"), # src/recordings/ dir in case we are running from parent
+                                "recordings",
+                            ]
+                            allowed_exts = {".wav", ".mp3", ".ogg", ".m4a", ".flac"}
+                            found_file = None
+
+                            # Search for the recording in candidate dirs (recordings/)
+                            for d in candidate_dirs:
+                                d = os.path.abspath(d) 
+                                if not os.path.isdir(d):
+                                    continue
+                                for p in glob.glob(os.path.join(d, name + ".*")):
+                                    if os.path.splitext(p)[1].lower() in allowed_exts:
+                                        found_file = p # found the file
+                                        break
+                                if found_file:
+                                    break
+
+                            if found_file:
+                                ok = play_recording(found_file)
+                                host_comms.send_event("audio_playback", {"method": "file", "filename": os.path.basename(found_file), "ok": bool(ok)})
+                                host_comms.send_event("audio_playback", {"method": "tts", "text": text}) # also log the original text
+                                return
+                        say(text) # TTS playback
+                        host_comms.send_event("audio_playback", {"method": "tts", "text": text}) 
                     else:
-                        print("[HOST CMD] audio command missing payload (text/b64/file):", msg)
+                        print("[HOST CMD] audio command missing payload (text/b64/file):", msg) # log error
                 except Exception as e:
                     print("[HOST CMD] audio playback error:", e)
                     host_comms.send_event("audio_playback", {"method": "error", "error": str(e)})
@@ -133,6 +179,7 @@ def main():
                 else:
                     print('[HOST CMD] collector_broadcast missing event field')
 
+            # Treat override commands
             elif cmd == "override_treat":
                 mode = msg.get("mode")
                 if mode == "disable":
@@ -143,13 +190,14 @@ def main():
                     mode_state["treat_disabled"] = False
                     print("[HOST] Treat logic enabled")
                     host_comms.send_event("treat_override", {"mode": "enable"})
-                elif mode == "force":
-                    mode_state["force_treat"] = True
-                    print("[HOST] Force treat requested")
-                    host_comms.send_event("treat_override", {"mode": "force"})
+                # elif mode == "force":
+                #     mode_state["force_treat"] = True
+                #     print("[HOST] Force treat requested")
+                #     host_comms.send_event("treat_override", {"mode": "force"})
                 else:
                     print("[HOST CMD] Unknown override_treat mode:", mode)
 
+            # Immediate treat command
             elif cmd == "treat_now":
                 servo.sweep()
                 say("Good dog!")
