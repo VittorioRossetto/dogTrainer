@@ -3,7 +3,7 @@ import cv2
 import config
 from vision import VisionSystem
 from servo_controller import ServoController
-from audio_comms import say
+from audio_comms import say, play_base64, play_recording
 import host_comms
 
 
@@ -99,10 +99,29 @@ def main():
                     print("[HOST CMD] Unknown servo action:", action)
 
             elif cmd == "audio":
+                # Support three modes:
+                # - raw text -> TTS via say()
+                # - b64 -> base64-encoded audio data to play
+                # - filename/file -> play a prerecorded file from recordings/ or path
                 text = msg.get("text")
-                if text:
-                    say(text)
-                    host_comms.send_event("audio_playback", {"text": text})
+                b64 = msg.get("b64")
+                filename = msg.get("filename") or msg.get("file")
+
+                try:
+                    if b64:
+                        ok = play_base64(b64)
+                        host_comms.send_event("audio_playback", {"method": "b64", "filename": filename if filename else None, "ok": bool(ok)})
+                    elif filename:
+                        ok = play_recording(filename)
+                        host_comms.send_event("audio_playback", {"method": "file", "filename": filename, "ok": bool(ok)})
+                    elif text:
+                        say(text)
+                        host_comms.send_event("audio_playback", {"method": "tts", "text": text})
+                    else:
+                        print("[HOST CMD] audio command missing payload (text/b64/file):", msg)
+                except Exception as e:
+                    print("[HOST CMD] audio playback error:", e)
+                    host_comms.send_event("audio_playback", {"method": "error", "error": str(e)})
 
             elif cmd == "override_treat":
                 mode = msg.get("mode")

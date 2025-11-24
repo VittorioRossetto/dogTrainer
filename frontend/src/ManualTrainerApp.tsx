@@ -5,14 +5,16 @@ import { Card, CardContent } from "@/components/ui/card";
 export default function ManualTrainerApp() {
   const [logs, setLogs] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
-  // Choose `ws` or `wss` automatically depending on page protocol to
-  // avoid mixed-content blocks when the frontend is served over HTTPS.
+  /* Choose `ws` or `wss` automatically depending on page protocol to
+   avoid mixed-content blocks when the frontend is served over HTTPS. */
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
   const defaultHost = "192.168.80.173";
   const defaultWsUrl = `${proto}://${defaultHost}:8765/ws`;
   const [wsUrl, setWsUrl] = useState<string>(defaultWsUrl);
   const [mode, setMode] = useState<"auto" | "manual">("manual");
   const [audioText, setAudioText] = useState<string>("");
+  const [fileToSend, setFileToSend] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   const addLog = (msg: string) => setLogs((l) => [msg, ...l]);
@@ -115,6 +117,31 @@ export default function ManualTrainerApp() {
     setAudioText("");
   };
 
+  const sendRecording = () => {
+    if (!fileToSend) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      addLog("Not connected — cannot send recording");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // result is like: data:audio/wav;base64,AAAA...
+      const parts = result.split(",");
+      const b64 = parts.length > 1 ? parts[1] : parts[0];
+      const payload = { cmd: "audio", b64, filename: fileToSend.name };
+      wsRef.current!.send(JSON.stringify(payload));
+      addLog(`Recording sent: ${fileToSend.name}`);
+      setFileToSend(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.onerror = (e) => {
+      addLog(`Failed to read file: ${String(e)}`);
+    };
+    reader.readAsDataURL(fileToSend);
+  };
+
   useEffect(() => {
     return () => {
       if (wsRef.current) {
@@ -151,6 +178,24 @@ export default function ManualTrainerApp() {
             Dispense Treat
           </Button>
 
+          <div className="pt-2 flex items-center gap-2">
+            <span className="text-sm">Mode:</span>
+            <Button
+              onClick={() => setModeCmd("auto")}
+              disabled={!connected || mode === "auto"}
+              variant={mode === "auto" ? undefined : "outline"}
+            >
+              Auto
+            </Button>
+            <Button
+              onClick={() => setModeCmd("manual")}
+              disabled={!connected || mode === "manual"}
+              variant={mode === "manual" ? undefined : "outline"}
+            >
+              Manual
+            </Button>
+          </div>
+
           {/* Custom audio input */}
           <div className="pt-2 flex gap-2">
             <input
@@ -163,6 +208,20 @@ export default function ManualTrainerApp() {
             />
             <Button onClick={sendAudio} disabled={!connected || !audioText}>
               Send Audio
+            </Button>
+          </div>
+
+          {/* Upload/Send recorded audio */}
+          <div className="pt-2 flex gap-2 items-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              onChange={(e) => setFileToSend(e.target.files ? e.target.files[0] : null)}
+              aria-label="Upload recording"
+            />
+            <Button onClick={sendRecording} disabled={!connected || !fileToSend}>
+              Send Recording
             </Button>
           </div>
         </CardContent>

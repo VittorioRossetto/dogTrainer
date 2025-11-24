@@ -14,13 +14,7 @@ import time
 import json
 import traceback
 import config
-
-try:
-    import requests
-    _HAS_REQUESTS = True
-except Exception:
-    requests = None
-    _HAS_REQUESTS = False
+import requests
 
 _client_v2 = None
 _write_api = None
@@ -219,10 +213,6 @@ def write_event(envelope: Dict[str, Any]):
         # no client library available — try HTTP write to InfluxDB v1 `/write` endpoint
         db = getattr(config, "INFLUX_DB", "dog_training")
         url = getattr(config, "INFLUX_URL", "http://localhost:8086").rstrip("/")
-
-        if not _HAS_REQUESTS:
-            print("[INFLUX] No InfluxDB client available and `requests` not installed (skipping)")
-            return False
 
         # build line protocol
         def _escape_tag(v: str) -> str:

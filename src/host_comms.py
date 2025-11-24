@@ -152,17 +152,11 @@ def start_ws_server():
     path = getattr(config, "WS_SERVER_PATH", "/ws")
 
     async def _handler(ws, path_recv=None):
-        # websockets library may call the handler with either (ws, path)
-        # or with a single `connection` object. Accept either form and
-        # extract the request path if needed.
         if path_recv is None:
             # WebSocketServerProtocol exposes the negotiated path as `.path`
             path_recv = getattr(ws, "path", None)
 
         # Only reject if we can determine the path and it doesn't match.
-        # Some websockets versions call the handler with a single connection
-        # object that may not expose the path immediately; in that case
-        # allow the connection to proceed to avoid an immediate close.
         if path_recv is not None and path_recv != path:
             try:
                 await ws.close()
@@ -208,7 +202,6 @@ def start_ws_server():
         _ws_server_loop = loop
         asyncio.set_event_loop(loop)
         # Create the server from within the event loop to avoid
-        # `asyncio.get_running_loop()` errors in newer websockets versions.
         async def _create_server():
             return await websockets.serve(_handler, '0.0.0.0', port)
 

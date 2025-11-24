@@ -1,42 +1,33 @@
-from gpiozero import AngularServo
+from adafruit_servokit import ServoKit
 import time
 import config
 
-
 class ServoController:
     def __init__(self):
-        self.pin = config.SERVO_PIN
-        # Match original pulse range ~600..2400 microseconds
-        self.servo = AngularServo(
-            self.pin,
-            min_angle=-90,
-            max_angle=90,
-            min_pulse_width=0.0006,
-            max_pulse_width=0.0024,
-        )
+        # Initialize PCA9685 with 16 channels
+        self.kit = ServoKit(channels=16)
+
+        # Servo connected to config.SERVO_PIN
+        self.channel = config.SERVO_PIN
+
+        # ServoKit uses 0–180° range by default
         self.angle = None
-        # Ensure servo always starts at 90 degrees
+
+        # Start at 90 degrees
         self.set_angle(90)
 
     def set_angle(self, angle):
-        """Only update servo if angle changes"""
-        if self.angle == angle:
+        if angle is None or angle == self.angle:
             return
 
-        if angle is None:
-            return
+        # clamp -90..90
+        angle = max(-90, min(90, angle))
 
-        # clamp to supported range
-        if angle < -90:
-            angle = -90
-        elif angle > 90:
-            angle = 90
-
-        self.servo.angle = angle
+        # Convert -90..90 into 0..180 for ServoKit
+        self.kit.servo[self.channel].angle = angle + 90
         self.angle = angle
 
     def sweep(self):
-        # Start at 90, move to 0, wait 0.5s, then move back to 90
         self.set_angle(90)
         time.sleep(0.1)
         self.set_angle(0)
@@ -45,5 +36,5 @@ class ServoController:
         time.sleep(0.1)
 
     def stop(self):
-        # stop sending pulses but keep the servo object usable
-        self.servo.value = None
+        # Turn off the PWM pulse (servo relaxes)
+        self.kit.servo[self.channel].angle = None
