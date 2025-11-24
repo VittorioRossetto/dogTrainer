@@ -49,8 +49,6 @@ Note: The project includes an HTTP fallback for Influx v1 (line-protocol POST) s
 Models aren't provided by default, given the dimensions:
 - `model`/`yolov8n.pt` will be installed automatically on first run
 - `model`/`best.pt` has to be manually trained by running `notebook`/`dogPoseClassifierTrain.ipynb` either locally or on colab.
-- You can look at the dataset employed in this project at: [Dataset](https://app.roboflow.com/vitto-rossetto-nbvy6/dog-pose-ntugs/1)
-
 
 ---
 
