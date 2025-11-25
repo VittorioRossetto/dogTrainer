@@ -121,36 +121,8 @@ def main():
                         ok = play_recording(filename) # play prerecorded file
                         host_comms.send_event("audio_playback", {"method": "file", "filename": filename, "ok": bool(ok)}) # notify host
                     elif text:
-                        name = text.strip()
-                        # only treat plain basenames (no path separators) as recording names
-                        if name and os.path.basename(name) == name:
-                            candidate_dirs = [
-                                os.path.join(os.getcwd(), "recordings"), # current working dir recordings/
-                                os.path.join(os.path.dirname(__file__), "recordings"), # src/recordings/ dir in case we are running from parent
-                                "recordings",
-                            ]
-                            allowed_exts = {".wav", ".mp3", ".ogg", ".m4a", ".flac"}
-                            found_file = None
-
-                            # Search for the recording in candidate dirs (recordings/)
-                            for d in candidate_dirs:
-                                d = os.path.abspath(d) 
-                                if not os.path.isdir(d):
-                                    continue
-                                for p in glob.glob(os.path.join(d, name + ".*")):
-                                    if os.path.splitext(p)[1].lower() in allowed_exts:
-                                        found_file = p # found the file
-                                        break
-                                if found_file:
-                                    break
-
-                            if found_file:
-                                ok = play_recording(found_file)
-                                host_comms.send_event("audio_playback", {"method": "file", "filename": os.path.basename(found_file), "ok": bool(ok)})
-                                host_comms.send_event("audio_playback", {"method": "tts", "text": text}) # also log the original text
-                                return
                         say(text) # TTS playback
-                        host_comms.send_event("audio_playback", {"method": "tts", "text": text}) 
+                         
                     else:
                         print("[HOST CMD] audio command missing payload (text/b64/file):", msg) # log error
                 except Exception as e:
