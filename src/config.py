@@ -34,7 +34,7 @@ INFLUX_BUCKET = "dog_training"
 INFLUX_DB = "dog_training"  # for InfluxDB v1 compatibility
 
 # Servo
-SERVO_PIN = 18 
+SERVO_PIN = 0
 MIN_PW = 0.0010  
 MAX_PW = 0.0020
 TREAT_ANGLE = 0 

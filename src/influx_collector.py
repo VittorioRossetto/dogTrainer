@@ -6,7 +6,7 @@ events and persist them locally into the `dog_training` database/bucket.
 
 Example:
   pip install websockets influxdb
-  python3 scripts/influx_collector.py --ws ws://192.168.80.173:8765/ws
+  python3 scripts/influx_collector.py --ws ws://raspberrypi.local:8765/ws
 
 Configuration:
   - The script uses the project's `src/config.py` INFLUX_* settings. Edit
@@ -174,7 +174,7 @@ async def _collector_loop(ws_url: str, reconnect_interval: float):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="WebSocket -> Influx collector")
-    p.add_argument("--ws", default="ws://192.168.80.173:8765/ws", help="WebSocket URL of device WS server")
+    p.add_argument("--ws", default="ws://raspberrypi.local:8765/ws", help="WebSocket URL of device WS server")
     p.add_argument("--reconnect", type=float, default=5.0, help="Reconnect interval (s)")
     args = p.parse_args(argv)
 

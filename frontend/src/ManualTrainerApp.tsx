@@ -8,7 +8,7 @@ export default function ManualTrainerApp() {
   /* Choose `ws` or `wss` automatically depending on page protocol to
    avoid mixed-content blocks when the frontend is served over HTTPS. */
   const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const defaultHost = "192.168.80.173";
+  const defaultHost = "raspberrypi.local";
   const defaultWsUrl = `${proto}://${defaultHost}:8765/ws`;
   const [wsUrl, setWsUrl] = useState<string>(defaultWsUrl);
   const [mode, setMode] = useState<"auto" | "manual">("manual");
