@@ -56,8 +56,21 @@ export default function ManualTrainerApp() {
               // clear highlight after 3s
               setTimeout(() => setHighlightSuccess(false), 3000);
             }
+
             if (evName === 'treat_given') {
               setTreatCount((t) => t + 1);
+              // Treats given by automatic mode count as successful commands as well
+              try {
+                const reason = (payload && payload.reason) ? String(payload.reason).toLowerCase() : '';
+                if (reason === 'auto') {
+                  setSuccessCount((s) => s + 1);
+                  setRecentSuccesses((rs) => [{ target_pose: undefined, when: Date.now(), filename: undefined, text: 'treat:auto' }, ...rs].slice(0, 10));
+                  setHighlightSuccess(true);
+                  setTimeout(() => setHighlightSuccess(false), 3000);
+                }
+              } catch (e) {
+                // ignore malformed payloads
+              }
             }
           }
         } catch (e) {
@@ -114,16 +127,6 @@ export default function ManualTrainerApp() {
     wsRef.current.send(JSON.stringify(payload));
     setMode(m);
     addLog(`Mode change requested: ${m}`);
-  };
-
-  const sendServoSweep = () => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      addLog("Not connected — cannot send servo");
-      return;
-    }
-    const payload = { cmd: "servo", action: "sweep" };
-    wsRef.current.send(JSON.stringify(payload));
-    addLog("Servo sweep requested");
   };
 
   const sendAudio = () => {
