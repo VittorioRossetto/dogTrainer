@@ -32,7 +32,7 @@ def automatic_mode_logic(mode_state, servo, label):
     if mode_state["stage"] == "waiting_stand":
         # Check the current pose
         if label == "stand":
-            say("Sit") # Instruct the dog
+            say("sit") # Instruct the dog
             mode_state["last_command_time"] = now # record command time
             mode_state["stage"] = "waiting_sit" # move to next state
 
@@ -44,18 +44,6 @@ def automatic_mode_logic(mode_state, servo, label):
         # Check for overrides
         if mode_state.get("treat_disabled"):
             return
-
-        # # Force treat if requested by host
-        # if mode_state.get("force_treat"):
-        #     servo.sweep()
-        #     say("Good dog!") # praise the dog even though the treat was forced
-        #     mode_state["force_treat"] = False # reset flag
-        #     mode_state["stage"] = "cooldown" # move to cooldown
-        #     mode_state["cooldown_until"] = now + config.TREAT_COOLDOWN 
-        #     # send treat event through host_comms
-        #     host_comms.send_event("treat_given", {"reason": "force_treat"})
-        #     host_comms.send_event("servo_action", {"action": "sweep"})
-        #     return
 
         # Check the current pose for sitting, give treat if so, since the dog followed command
         if label == "sit":
@@ -190,10 +178,6 @@ def main():
                     mode_state["treat_disabled"] = False
                     print("[HOST] Treat logic enabled")
                     host_comms.send_event("treat_override", {"mode": "enable"})
-                # elif mode == "force":
-                #     mode_state["force_treat"] = True
-                #     print("[HOST] Force treat requested")
-                #     host_comms.send_event("treat_override", {"mode": "force"})
                 else:
                     print("[HOST CMD] Unknown override_treat mode:", mode)
 
