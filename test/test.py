@@ -5,9 +5,9 @@ import numpy as np
 # -------------------------------
 # CONFIG
 # -------------------------------
-CLASSIFIER_MODEL = "model/best.pt"   # or "best.onnx"
+CLASSIFIER_MODEL = "../model/best.pt"   # or "best.onnx"
 USE_ONNX = CLASSIFIER_MODEL.endswith(".onnx")
-DETECTOR_MODEL = "model/yolov8n.pt"  # auto-download
+DETECTOR_MODEL = "../model/yolov8n.pt"  # auto-download
 CONF_THRESH = 0.3
 POSE_CONF_THRESH = 0.5
 
