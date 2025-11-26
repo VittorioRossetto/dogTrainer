@@ -17,7 +17,7 @@ export default function ManualTrainerApp() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [successCount, setSuccessCount] = useState<number>(0);
   const [treatCount, setTreatCount] = useState<number>(0);
-  const [recentSuccesses, setRecentSuccesses] = useState<Array<{ target_pose?: string; when: number; filename?: string; text?: string }>>([]);
+  const [, setRecentSuccesses] = useState<Array<{ target_pose?: string; when: number; filename?: string; text?: string }>>([]);
   const [highlightSuccess, setHighlightSuccess] = useState<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
 

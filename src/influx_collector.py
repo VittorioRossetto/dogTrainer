@@ -29,7 +29,6 @@ async def _collector_loop(ws_url: str, reconnect_interval: float):
     # subsequent pose_transition events (for detecting command success)
     recent_audio = deque(maxlen=200)  # entries: dict(ts, text, filename, matched)
 
-    # per-day counters (YYYY-MM-DD -> {'treat':int, 'success':int})
     daily_counters = {}
 
     def _today_key(ts=None):

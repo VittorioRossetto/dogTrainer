@@ -1,11 +1,10 @@
-import React from 'react'
+// import React from 'react'
 
 export default function DailyCountersChart({ points }: { points: Array<any> }) {
-  // Expect points: [{date: 'YYYY-MM-DD', command_success_count: N, treat_count: M}, ...]
   const width = 700
   const height = 220
-  const margin = { top: 10, right: 10, bottom: 50, left: 40 }
-  const innerW = width - margin.left - margin.right
+  const margin = { top: 10, right: 10, bottom: 50, left: 40 } 
+  const innerW = width - margin.left - margin.right 
   const innerH = height - margin.top - margin.bottom
 
   const successVals = points.map((p) => Number(p.command_success_count || 0))
