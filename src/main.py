@@ -108,7 +108,7 @@ def main():
                 # Support three modes:
                 # - raw text -> TTS via say()
                 # - b64 -> base64-encoded audio data to play
-                # - filename/file -> play a prerecorded file from recordings/ or path
+                # - filename/file -> play a prerecorded file from recordings/
                 text = msg.get("text") # raw text for TTS
                 b64 = msg.get("b64") # base64-encoded audio data
                 filename = msg.get("filename") or msg.get("file") # filename or file path

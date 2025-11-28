@@ -37,7 +37,7 @@ https://universe.roboflow.com/vitto-rossetto-nbvy6/dog-pose-ntugs
 
 ---
 
-Requirements
+**Requirements**
 
 - Python 3.8+ on the device and host machines
 - System packages (device): `ffmpeg`/`pulseaudio` utilities for audio playback (e.g. `paplay`, `ffplay`, `aplay`), and TTS engines like `espeak` or `pico2wave` for TTS
@@ -46,15 +46,19 @@ Requirements
 
 Note: The project includes an HTTP fallback for Influx v1 (line-protocol POST) so the Python Influx libraries are optional for simple setups.
 
+---
+
+### Models
+
 Models aren't provided by default, given the dimensions:
 - `model`/`yolov8n.pt` will be installed automatically on first run
 - `model`/`best.pt` has to be manually trained by running `notebook`/`dogPoseClassifierTrain.ipynb` either locally or on colab.
 
 ---
 
-Device quickstart (Raspberry Pi)
+### Device quickstart (Raspberry Pi)
 
-1. Create and activate a virtual environment and install Python deps (example:
+1. Create and activate a virtual environment and install Python deps:
 
 ```bash
 python3 -m venv venv
@@ -62,14 +66,14 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. Ensure audio tools and TTS engines are installed (example on Debian/Ubuntu):
+1. Ensure audio tools and TTS engines are installed:
 
 ```bash
 sudo apt update
 sudo apt install pulseaudio-utils espeak ffmpeg
 ```
 
-3. Start the device app (it runs a Flask status endpoint and a WebSocket server):
+1. Start the device app :
 
 ```bash
 python3 src/main.py
@@ -78,14 +82,14 @@ python3 src/main.py
 4. Default device WebSocket server URL (used by the frontend):
 
 ```
-ws://<DEVICE_IP>:8765/ws
+ws://raspberrypi.local:8765/ws
 ```
 
-Replace `<DEVICE_IP>` with your Pi's IP (e.g. `192.168.80.173`).
+Usually RaspberryPys are available at `raspberrypi.local`, but you could need to replace it with your Pi's IP (e.g. `192.168.80.173`).
 
 ---
 
-Influx collector & API (optional)
+### Influx collector & API
 
 These components run on the Influx host (or same machine) and connect to the device WebSocket to receive events and write them into `dog_training` database.
 
@@ -102,7 +106,7 @@ Note: If your Influx version is v1.x (e.g. 1.6.7), the writer will use an HTTP l
 
 ---
 
-Frontend (development)
+### Frontend (development)
 
 1. From the `frontend/` directory, install dependencies and run the dev server:
 
@@ -117,7 +121,7 @@ npm run dev
 - Upload a small audio file (the UI will send base64 over WebSocket)
 - Dispense treats and control servo actions
 
-Frontend messages (examples sent to device over WS):
+### Frontend messages (examples sent to device over WS):
 
 - Set mode: `{ "cmd": "set_mode", "mode": "auto" }`
 - Treat now: `{ "cmd": "treat_now" }`
@@ -133,15 +137,13 @@ The device responds by broadcasting event envelopes to connected UIs. Events loo
 
 ---
 
-Developer notes
+### Further Informations
 
-- `src/host_comms.py` hosts the WebSocket server and interfaces between the device and UI/host. Register a command handler with `register_command_handler(fn)`.
-- `src/audio_comms.py` provides `say(text)`, `play_recording(name_or_path)`, and `play_base64(b64)` for audio playback.
-- For large audio transfers prefer an HTTP upload endpoint and play from disk rather than sending very large base64 blobs over WS.
+To further understand the project, and more in-depth explanations, please refer to: `ProjectPaper.pdf`
 
 ---
 
-Author
+### Author
 
 Vittorio Rossetto
 - [Github](https://github.com/VittorioRossetto)
@@ -149,6 +151,7 @@ Vittorio Rossetto
   
 ---
 
-Contributing
+### Contributing
 
 Contributions welcome. Open an issue or PR describing your change. Suggested next improvements:
+- Mobile App
