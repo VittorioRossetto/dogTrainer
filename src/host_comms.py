@@ -1,3 +1,12 @@
+"""
+Host communication module.
+Provides functions to send status updates and events to a host server via HTTP POST or WebSocket.
+Also implements a WebSocket server to accept incoming commands from UIs.
+    
+Register a command handler via `register_command_handler` to process incoming commands.
+"""
+
+
 import threading
 import time
 import config

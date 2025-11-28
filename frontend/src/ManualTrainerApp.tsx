@@ -17,6 +17,7 @@ export default function ManualTrainerApp() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [successCount, setSuccessCount] = useState<number>(0);
   const [treatCount, setTreatCount] = useState<number>(0);
+  const [treatDisabled, setTreatDisabled] = useState<boolean>(false);
   const [, setRecentSuccesses] = useState<Array<{ target_pose?: string; when: number; filename?: string; text?: string }>>([]);
   const [highlightSuccess, setHighlightSuccess] = useState<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -57,6 +58,17 @@ export default function ManualTrainerApp() {
               setTimeout(() => setHighlightSuccess(false), 3000);
             }
 
+
+            if (evName === 'treat_override') {
+              try {
+                const mode = (payload && payload.mode) ? String(payload.mode).toLowerCase() : '';
+                const disabled = mode === 'disable';
+                setTreatDisabled(disabled);
+                addLog(`Treat override: ${mode}`);
+              } catch (e) {
+                // ignore malformed payload
+              }
+            }
             if (evName === 'treat_given') {
               setTreatCount((t) => t + 1);
               // Treats given by automatic mode count as successful commands as well
@@ -93,6 +105,17 @@ export default function ManualTrainerApp() {
     } catch (e) {
       addLog(`Failed to connect: ${String(e)}`);
     }
+  };
+
+  const setTreatOverride = (m: "disable" | "enable") => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      addLog("Not connected — cannot change treat override");
+      return;
+    }
+    const payload = { cmd: "override_treat", mode: m };
+    wsRef.current.send(JSON.stringify(payload));
+    setTreatDisabled(m === "disable");
+    addLog(`Treat override requested: ${m}`);
   };
 
   const sendCommand = (cmd: string) => {
@@ -245,6 +268,27 @@ export default function ManualTrainerApp() {
             >
               Manual
             </Button>
+          </div>
+
+          <div className="pt-2 flex items-center gap-2">
+            <span className="text-sm">Treats:</span>
+            <Button
+              onClick={() => setTreatOverride('disable')}
+              disabled={!connected || treatDisabled}
+              variant={treatDisabled ? undefined : "outline"}
+            >
+              Disable
+            </Button>
+            <Button
+              onClick={() => setTreatOverride('enable')}
+              disabled={!connected || !treatDisabled}
+              variant={!treatDisabled ? undefined : "outline"}
+            >
+              Enable
+            </Button>
+            <div className={`px-3 py-1 rounded ${treatDisabled ? 'bg-red-100' : 'bg-green-100'}`}>
+              <strong>{treatDisabled ? 'Disabled' : 'Enabled'}</strong>
+            </div>
           </div>
 
           {/* Custom audio input */}
