@@ -32,7 +32,8 @@ def automatic_mode_logic(mode_state, servo, label):
     if mode_state["stage"] == "waiting_stand":
         # Check the current pose
         if label == "stand":
-            say("sit") # Instruct the dog
+            # Instruct the dog to perform the configured auto command
+            say(config.AUTO_COMMAND)
             mode_state["last_command_time"] = now # record command time
             mode_state["stage"] = "waiting_sit" # move to next state
 
@@ -45,8 +46,8 @@ def automatic_mode_logic(mode_state, servo, label):
         if mode_state.get("treat_disabled"):
             return
 
-        # Check the current pose for sitting, give treat if so, since the dog followed command
-        if label == "sit":
+        # Check the current pose for the configured auto command, give treat if so
+        if label == config.AUTO_COMMAND:
             servo.sweep() # dispense treat
             say("Good dog!") # praise the dog
             mode_state["stage"] = "cooldown" # move to cooldown
@@ -139,6 +140,17 @@ def main():
                 else:
                     print('[HOST CMD] collector_broadcast missing event field')
 
+            elif cmd == "set_auto_command":
+                # Allow host/frontend to change the automatic-mode command.
+                # Expected payload: {cmd:'set_auto_command', command: 'sit'|'lie'}
+                new_cmd = msg.get('command') or msg.get('auto_command')
+                if new_cmd in ("sit", "lie"):
+                    config.AUTO_COMMAND = new_cmd
+                    print(f"[HOST] AUTO_COMMAND set to: {config.AUTO_COMMAND}")
+                    host_comms.send_event("auto_command_changed", {"command": config.AUTO_COMMAND})
+                else:
+                    print('[HOST CMD] Invalid auto command:', new_cmd)
+
             # Treat override commands
             elif cmd == "override_treat":
                 mode = msg.get("mode")
@@ -201,6 +213,7 @@ def main():
                     "pose": label,
                     "pose_confidence": conf,
                     "stage": mode_state["stage"],
+                    "auto_command": config.AUTO_COMMAND,
                     "timestamp": time.time()
                 })
 

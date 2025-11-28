@@ -18,6 +18,7 @@ export default function ManualTrainerApp() {
   const [successCount, setSuccessCount] = useState<number>(0);
   const [treatCount, setTreatCount] = useState<number>(0);
   const [treatDisabled, setTreatDisabled] = useState<boolean>(false);
+  const [autoCommand, setAutoCommand] = useState<'sit' | 'lie'>('sit');
   const [, setRecentSuccesses] = useState<Array<{ target_pose?: string; when: number; filename?: string; text?: string }>>([]);
   const [highlightSuccess, setHighlightSuccess] = useState<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -56,6 +57,25 @@ export default function ManualTrainerApp() {
               setHighlightSuccess(true);
               // clear highlight after 3s
               setTimeout(() => setHighlightSuccess(false), 3000);
+            }
+
+            // Device status updates include current auto command
+            if (evName === 'status') {
+              try {
+                const ac = payload && (payload.auto_command || payload.autoCommand);
+                if (ac && (ac === 'sit' || ac === 'lie')) {
+                  setAutoCommand(ac);
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+
+            if (evName === 'auto_command_changed') {
+              try {
+                const cmd = payload && (payload.command || payload.auto_command);
+                if (cmd && (cmd === 'sit' || cmd === 'lie')) setAutoCommand(cmd);
+              } catch (e) {}
             }
 
 
@@ -105,6 +125,17 @@ export default function ManualTrainerApp() {
     } catch (e) {
       addLog(`Failed to connect: ${String(e)}`);
     }
+  };
+
+  const sendSetAutoCommand = (c: 'sit' | 'lie') => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      addLog('Not connected — cannot set auto command');
+      return;
+    }
+    const payload = { cmd: 'set_auto_command', command: c };
+    wsRef.current.send(JSON.stringify(payload));
+    setAutoCommand(c);
+    addLog(`Auto command requested: ${c}`);
   };
 
   const setTreatOverride = (m: "disable" | "enable") => {
@@ -288,6 +319,27 @@ export default function ManualTrainerApp() {
             </Button>
             <div className={`px-3 py-1 rounded ${treatDisabled ? 'bg-red-100' : 'bg-green-100'}`}>
               <strong>{treatDisabled ? 'Disabled' : 'Enabled'}</strong>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center gap-2">
+            <span className="text-sm">Auto Cmd:</span>
+            <Button
+              onClick={() => sendSetAutoCommand('sit')}
+              disabled={!connected || autoCommand === 'sit'}
+              variant={autoCommand === 'sit' ? undefined : 'outline'}
+            >
+              Sit
+            </Button>
+            <Button
+              onClick={() => sendSetAutoCommand('lie')}
+              disabled={!connected || autoCommand === 'lie'}
+              variant={autoCommand === 'lie' ? undefined : 'outline'}
+            >
+              Lie
+            </Button>
+            <div className={`px-3 py-1 rounded ${autoCommand === 'sit' ? 'bg-gray-100' : 'bg-gray-100'}`}>
+              <strong>{autoCommand}</strong>
             </div>
           </div>
 

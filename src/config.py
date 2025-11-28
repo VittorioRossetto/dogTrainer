@@ -13,6 +13,10 @@ POSE_CONF = 0.70 # confidence threshold for pose classification
 TREAT_WINDOW = 10       # seconds
 TREAT_COOLDOWN = 5*60   # 5 minutes cooldown after treat
 
+# Default automatic-mode command to ask the dog to perform when triggered.
+# Can be 'sit' or 'lie' and is configurable from the frontend.
+AUTO_COMMAND = "sit"
+
 # Host communication: set to the host endpoint to receive status updates from
 HOST_URL = None
 # WebSocket host URL (preferred for low-latency bidirectional comms).
