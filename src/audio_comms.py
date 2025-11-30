@@ -125,50 +125,51 @@ def say(text, sink_keyword="VTIN K1", rate=140, voice=None):
             ok = play_recording(found_file)
             host_comms.send_event("audio_playback", {"method": "file", "filename": os.path.basename(found_file), "ok": bool(ok)})
             host_comms.send_event("audio_playback", {"method": "tts", "text": text}) # also log the original text
-            return
-    
-    else:
-        # Try to find and set the BT sink as default (best-effort)
-        if shutil.which("pactl"):
-            sink = _find_pulseaudio_sink(sink_keyword)
-            if sink:
-                _set_default_sink(sink)
+            return bool(ok)
 
-        # Create temporary WAV
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
-            wav_path = tf.name
+    # If we get here it means either `name` was not a plain basename, or
+    # it was but we couldn't find a matching recording — fall back to TTS.
+    # Try to find and set the BT sink as default (best-effort)
+    if shutil.which("pactl"):
+        sink = _find_pulseaudio_sink(sink_keyword)
+        if sink:
+            _set_default_sink(sink)
 
+    # Create temporary WAV
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+        wav_path = tf.name
+
+    try:
+        # Prefer espeak
+        if shutil.which("espeak"):
+            cmd = ["espeak", "-w", wav_path, f"-s{int(rate)}"]
+            if voice:
+                cmd.extend(["-v", voice])
+            cmd.append(text)
+            r = _run(cmd, check=False)
+            if r is None or r.returncode != 0:
+                print("espeak failed to generate audio")
+        elif shutil.which("pico2wave"):
+            # pico2wave takes text in quotes
+            cmd = ["pico2wave", "-w", wav_path, text]
+            r = _run(cmd, check=False)
+            if r is None or r.returncode != 0:
+                print("pico2wave failed to generate audio")
+        else:
+            print("No TTS engine found (espeak/pico2wave). Install one and retry.")
+            return False
+
+        # Small delay to ensure file is written on slow FS
+        time.sleep(0.05)
+
+        ok = _play_file(wav_path)
+        host_comms.send_event("audio_playback", {"method": "tts", "text": text})
+        return bool(ok)
+    finally:
         try:
-            # Prefer espeak
-            if shutil.which("espeak"):
-                cmd = ["espeak", "-w", wav_path, f"-s{int(rate)}"]
-                if voice:
-                    cmd.extend(["-v", voice])
-                cmd.append(text)
-                r = _run(cmd, check=False)
-                if r is None or r.returncode != 0:
-                    print("espeak failed to generate audio")
-            elif shutil.which("pico2wave"):
-                # pico2wave takes text in quotes
-                cmd = ["pico2wave", "-w", wav_path, text]
-                r = _run(cmd, check=False)
-                if r is None or r.returncode != 0:
-                    print("pico2wave failed to generate audio")
-            else:
-                print("No TTS engine found (espeak/pico2wave). Install one and retry.")
-                return False
-
-            # Small delay to ensure file is written on slow FS
-            time.sleep(0.05)
-
-            ok = _play_file(wav_path)
-            host_comms.send_event("audio_playback", {"method": "tts", "text": text})
-            return ok
-        finally:
-            try:
-                os.remove(wav_path)
-            except Exception:
-                pass
+            os.remove(wav_path)
+        except Exception:
+            pass
 
 
 def play_recording(name_or_path, sink_keyword="VTIN K1"):
