@@ -180,6 +180,36 @@ def points():
                     simplified.append({'text': text, 'length': wl, 'time': time_str, 'date': date_str})
 
             return jsonify({'points': simplified})
+        
+        if meas == 'treat_override':
+            simplified = []
+            for r in rows:
+                mode = r.get('mode') or None
+
+                time_str = ''
+                date_str = ''
+                t = r.get('time') or None
+                if t:
+                    time_str, date_str = timestamp_to_dateTime(t)
+
+                simplified.append({'mode': mode, 'time': time_str, 'date': date_str})
+
+            return jsonify({'points': simplified})
+        
+        if meas == 'auto_command_changed':
+            simplified = []
+            for r in rows:
+                command = r.get('command') or None
+
+                time_str = ''
+                date_str = ''
+                t = r.get('time') or None
+                if t:
+                    time_str, date_str = timestamp_to_dateTime(t)
+
+                simplified.append({'command': command, 'time': time_str, 'date': date_str})
+
+            return jsonify({'points': simplified})
 
         return jsonify({'points': rows})
     except Exception as e:
